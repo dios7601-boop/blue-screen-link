@@ -1,80 +1,222 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>System message</title>
+  <title>장난용 화면보호기 · Comfort Arch 2026</title>
   <style>
-    :root { background: #0078d7; }
+    :root {
+      --pink: #ffd3e6;
+      --pink-deep: #ff9ec4;
+      --sky: #cfe9ff;
+      --ink: #4a3b47;
+    }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      align-items: flex-start;
-      background: #0078d7;
-      color: #fff;
-      cursor: none;
-      display: flex;
-      font-family: "Segoe UI", system-ui, sans-serif;
       margin: 0;
       min-height: 100vh;
-      padding: clamp(60px, 11vh, 150px) clamp(32px, 9vw, 180px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 3vh, 36px);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      text-align: center;
+      overflow: hidden;
+      /* 부드러운 파스텔 배경 (벚꽃 느낌) */
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #fff 0%, transparent 60%),
+        linear-gradient(160deg, var(--pink) 0%, var(--sky) 100%);
+      cursor: default; /* 커서 숨기지 않음 */
     }
-    main { max-width: 900px; }
-    .face { font-size: clamp(72px, 11vw, 170px); font-weight: 300; line-height: .85; }
-    p { font-size: clamp(20px, 2.1vw, 35px); line-height: 1.35; margin: 42px 0 0; }
-    .progress { font-size: clamp(17px, 1.5vw, 25px); margin-top: 32px; }
-    .hint { bottom: 22px; font-size: 13px; left: 28px; opacity: .5; position: fixed; }
-    .photo {
-      border: 8px solid #fff;
-      box-shadow: 0 18px 48px rgba(0, 0, 0, .35);
-      left: 50%;
-      max-height: 76vh;
-      max-width: 76vw;
-      opacity: 0;
+
+    /* 벚꽃 캔버스 (뒤 배경) */
+    #petals {
       position: fixed;
-      top: 50%;
-      transform: translate(-50%, -50%) scale(.88);
-      transition: opacity .38s ease, transform .38s ease;
-      z-index: 2;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
     }
-    body.show-photo .photo { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    body.finished main, body.finished .photo { opacity: 0; transition: opacity .45s ease; }
+
+    .banner {
+      position: relative;
+      z-index: 3;
+      background: rgba(255, 255, 255, .72);
+      border: 2px solid #fff;
+      border-radius: 999px;
+      padding: 14px clamp(20px, 4vw, 44px);
+      box-shadow: 0 10px 30px rgba(255, 158, 196, .35);
+      backdrop-filter: blur(4px);
+    }
+    .banner h1 {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 34px);
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+    .banner p {
+      margin: 6px 0 0;
+      font-size: clamp(13px, 1.6vw, 19px);
+      opacity: .8;
+    }
+
+    .photo-wrap {
+      position: relative;
+      z-index: 2;
+      animation: float 4.5s ease-in-out infinite;
+    }
+    .photo {
+      display: block;
+      max-height: 62vh;
+      max-width: 82vw;
+      border: 10px solid #fff;
+      border-radius: 14px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .28);
+      background: #fff;
+    }
+    .photo-fallback {
+      display: none;
+      width: min(70vw, 420px);
+      aspect-ratio: 3 / 4;
+      border: 10px solid #fff;
+      border-radius: 14px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, .22);
+      background: linear-gradient(160deg, #fff, #ffe6f1);
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      font-size: clamp(14px, 1.8vw, 18px);
+      line-height: 1.6;
+      color: #9a6f84;
+    }
+    body.no-photo .photo { display: none; }
+    body.no-photo .photo-fallback { display: flex; }
+
+    .hint {
+      position: fixed;
+      bottom: 22px;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      font-size: clamp(12px, 1.5vw, 16px);
+      color: var(--ink);
+      opacity: .7;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(-.6deg); }
+      50%      { transform: translateY(-14px) rotate(.6deg); }
+    }
+
+    /* 닫힐 때 부드럽게 사라짐 */
+    body.closing { transition: opacity .4s ease; opacity: 0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .photo-wrap { animation: none; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <div class="face">:(</div>
-    <p>
-      Your PC ran into a problem and needs to restart.<br>
-      We're just collecting some error info, and then we'll restart for you.
-    </p>
-    <p class="progress"><span id="percent">0</span>% complete</p>
-  </main>
-  <img class="photo" src="center-photo.png" alt="">
-  <div class="hint">Click anywhere for full screen</div>
+  <canvas id="petals"></canvas>
+
+  <div class="banner">
+    <h1>🌸 장난용 화면보호기예요 🌸</h1>
+    <p>놀라지 마세요 — 그냥 장난이에요 😊 · Comfort Arch 2026</p>
+  </div>
+
+  <div class="photo-wrap">
+    <img class="photo" src="center-photo.png" alt="화면에 보여줄 그림" id="photo">
+    <div class="photo-fallback">
+      보여줄 그림이 없어요.<br>
+      <strong>center-photo.png</strong> 파일을<br>원하는 그림으로 바꿔 넣어주세요.
+    </div>
+  </div>
+
+  <div class="hint">아무 키나 누르거나 화면을 클릭하면 닫혀요 · 전체화면은 Esc 로 해제</div>
 
   <script>
-    const duration = 10_000;
-    const startedAt = performance.now();
-    const percent = document.getElementById('percent');
+    // --- 사진이 없으면 안내 박스로 전환 ---
+    const photo = document.getElementById('photo');
+    photo.addEventListener('error', () => document.body.classList.add('no-photo'));
 
-    function update(now) {
-      const elapsed = now - startedAt;
-      percent.textContent = Math.min(100, Math.floor(elapsed / duration * 100));
-      if (elapsed < duration) {
-        requestAnimationFrame(update);
-      } else {
-        document.body.classList.add('finished');
-      }
-    }
-
+    // --- 클릭하면 전체화면 토글 (강제 아님, 사용자가 원할 때만) ---
     document.addEventListener('click', async () => {
-      if (!document.fullscreenElement) {
-        try { await document.documentElement.requestFullscreen(); } catch (_) {}
-      }
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (_) { /* 전체화면 안 되면 그냥 무시 */ }
     });
 
-    setTimeout(() => document.body.classList.add('show-photo'), 2_000);
-    requestAnimationFrame(update);
+    // --- 아무 키나 누르거나 더블클릭하면 닫기 시도 ---
+    function closeSaver() {
+      document.body.classList.add('closing');
+      setTimeout(() => {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        // 스크립트로 연 창이면 닫히고, 아니면 전체화면만 해제되고 페이지는 남습니다.
+        window.close();
+      }, 420);
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') return; // Esc 는 브라우저가 전체화면 해제에 사용
+      closeSaver();
+    });
+    document.addEventListener('dblclick', closeSaver);
+
+    // --- 벚꽃 흩날리는 연출 (소리 없음) ---
+    const canvas = document.getElementById('petals');
+    const ctx = canvas.getContext('2d');
+    let w, h, petals;
+    const PETAL_COLORS = ['#ffd3e6', '#ff9ec4', '#ffe3f0', '#ffc0dc'];
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+      const count = Math.round((w * h) / 42000); // 화면 크기에 맞춰 개수 조절
+      petals = Array.from({ length: count }, makePetal);
+    }
+    function makePetal() {
+      return {
+        x: Math.random() * w,
+        y: Math.random() * h - h,
+        r: 6 + Math.random() * 9,
+        speed: 0.6 + Math.random() * 1.3,
+        sway: Math.random() * 2 * Math.PI,
+        swaySpeed: 0.01 + Math.random() * 0.02,
+        rot: Math.random() * 2 * Math.PI,
+        rotSpeed: (Math.random() - 0.5) * 0.04,
+        color: PETAL_COLORS[(Math.random() * PETAL_COLORS.length) | 0],
+      };
+    }
+    function drawPetal(p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      // 간단한 꽃잎 모양
+      ctx.ellipse(0, 0, p.r * 0.55, p.r, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      for (const p of petals) {
+        p.sway += p.swaySpeed;
+        p.y += p.speed;
+        p.x += Math.sin(p.sway) * 0.8;
+        p.rot += p.rotSpeed;
+        if (p.y - p.r > h) { Object.assign(p, makePetal(), { y: -20, x: Math.random() * w }); }
+        drawPetal(p);
+      }
+      requestAnimationFrame(tick);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+    tick();
   </script>
 </body>
 </html>
